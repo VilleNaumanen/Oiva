@@ -43,7 +43,7 @@
       <div class="dash-section-header">
         <h2>Email digest{% if digest %} — {{ digest.date | fmtdate }}{% endif %}</h2>
         <div style="display:flex;gap:6px;align-items:center;">
-          <span class="siiri-chat-hint">"Siiri, check the inbox"</span>
+          <button type="button" class="btn btn-primary btn-sm" id="run-siiri-btn">▶ Run Siiri</button>
           <button type="button" class="btn btn-secondary btn-sm" id="feed-siiri-btn">↑ Feed Siiri</button>
         </div>
       </div>
@@ -297,6 +297,24 @@ function attachUrgentChecks() {
   });
 }
 attachUrgentChecks();
+
+// ── Run Siiri ─────────────────────────────────────────────────────────────
+document.getElementById('run-siiri-btn')?.addEventListener('click', function() {
+  const btn = this;
+  btn.textContent = '⏳ Running…';
+  btn.disabled = true;
+  fetch('/digest/run-siiri', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        location.reload();
+      } else {
+        btn.textContent = `✗ ${d.msg}`;
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = '▶ Run Siiri'; }, 3000);
+      }
+    });
+});
 
 // ── Feed Siiri ─────────────────────────────────────────────────────────────
 document.getElementById('feed-siiri-btn')?.addEventListener('click', function() {

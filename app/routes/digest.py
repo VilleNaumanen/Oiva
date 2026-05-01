@@ -1,50 +1,37 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..database import get_db
-from ..services import siiri as siiri_service
+from ..services.digest import persist_digest
 from ..services.email_parser import archive_inbox_emails
 
 bp = Blueprint("digest", __name__)
 
 
+def _normalise(data: dict) -> dict:
+    """Promote flat 'actions' list to split format when split keys are absent."""
+    if not data.get("action_required") and not data.get("worth_knowing"):
+        ar, wk = [], []
+        for item in data.get("actions", []):
+            (ar if item.get("category") == "action" else wk).append(item)
+        data = {**data, "action_required": ar, "worth_knowing": wk}
+    return data
+
+
 @bp.route("/save", methods=["POST"])
 def save():
-    data = request.get_json(force=True)
-    from datetime import date
-
-    action_required = data.get("action_required", [])
-    worth_knowing = data.get("worth_knowing", [])
-    if not action_required and not worth_knowing:
-        for item in data.get("actions", []):
-            (action_required if item.get("category") == "action" else worth_knowing).append(item)
-
+    data = _normalise(request.get_json(force=True))
     db = get_db()
-    did = db.execute(
-        "INSERT INTO digests (date, noise_count) VALUES (?,?)",
-        [date.today().isoformat(), data.get("noise_count", 0)]
-    ).lastrowid
-    for item in action_required:
-        db.execute(
-            "INSERT INTO digest_actions (digest_id,category,action_verb,summary,detail,deadline,email_from,email_subject,source) VALUES (?,?,?,?,?,?,?,?,?)",
-            [did, "action", item.get("action_verb", ""), item.get("summary", ""),
-             item.get("detail", ""), item.get("deadline"), item.get("email_from", ""),
-             item.get("email_subject", ""), item.get("source", "")]
-        )
-    for item in worth_knowing:
-        db.execute(
-            "INSERT INTO digest_actions (digest_id,category,summary,detail,email_from,email_subject,source) VALUES (?,?,?,?,?,?,?)",
-            [did, "info", item.get("summary", ""), item.get("detail", ""),
-             item.get("email_from", ""), item.get("email_subject", ""), item.get("source", "")]
-        )
-    for m in data.get("meetings", []):
-        if m.get("title") and m.get("date"):
-            db.execute(
-                "INSERT INTO meetings (title,date,time_start,time_end,location,organizer,source) VALUES (?,?,?,?,?,?,?)",
-                [m["title"], m["date"], m.get("time_start"), m.get("time_end"),
-                 m.get("location"), m.get("organizer"), "siiri"]
-            )
-    db.commit()
+    did = persist_digest(db, data)
     archive_inbox_emails(current_app.config["INBOX"])
     return jsonify({"ok": True, "digest_id": did})
+
+
+@bp.route("/run-siiri", methods=["POST"])
+def run_siiri():
+    from ..services import siiri as siiri_service
+    ok, result = siiri_service.run_digest(current_app.config)
+    if ok:
+        return jsonify({"ok": True, "digest_id": result})
+    return jsonify({"ok": False, "msg": str(result)})
 
 
 @bp.route("/action/<int:action_id>/toggle", methods=["POST"])
@@ -77,6 +64,8 @@ def mark_replied(action_id):
 
 @bp.route("/feed-siiri", methods=["POST"])
 def feed_siiri():
+    import os
+    from datetime import date
     db = get_db()
     digest = db.execute(
         "SELECT id FROM digests ORDER BY created_at DESC, id DESC LIMIT 1"
@@ -90,8 +79,6 @@ def feed_siiri():
     entries = [r["note"].strip() for r in rows if r["note"]]
     if not entries:
         return jsonify({"ok": False, "msg": "No Siiri instructions found in notes"})
-    from datetime import date
-    import os
     prefs = current_app.config["SIIRI_PREFS"]
     os.makedirs(os.path.dirname(prefs), exist_ok=True)
     with open(prefs, "a", encoding="utf-8") as f:

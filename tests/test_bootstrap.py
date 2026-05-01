@@ -12,7 +12,7 @@ EXPECTED_TABLES = {
 }
 
 EXPECTED_ROUTES = {
-    "/", "/digest/save", "/digest/feed-siiri",
+    "/", "/digest/save", "/digest/run-siiri", "/digest/feed-siiri",
     "/digest/action/<int:action_id>/toggle",
     "/digest/action/<int:action_id>/note",
     "/digest/action/<int:action_id>/reply",
