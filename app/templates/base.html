@@ -1,11 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Oiva{% endblock %}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Oiva{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <header>
+    <div class="header-inner">
+      <a href="{{ url_for('dashboard.dashboard') }}" class="logo">Oiva</a>
+      <nav class="nav-tabs">
+        <a href="{{ url_for('dashboard.dashboard') }}"
+           class="nav-tab {% if request.blueprint == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('projects.index') }}"
+           class="nav-tab {% if request.blueprint == 'projects' %}active{% endif %}">Projects</a>
+        <a href="{{ url_for('contacts.index') }}"
+           class="nav-tab {% if request.blueprint == 'contacts' %}active{% endif %}">Contacts</a>
+        <a href="{{ url_for('admin.tests') }}"
+           class="nav-tab {% if request.blueprint == 'admin' %}active{% endif %}">Tests</a>
+      </nav>
+    </div>
+  </header>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in msgs %}
+      <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <main>
     {% block content %}{% endblock %}
+  </main>
 </body>
 </html>

@@ -1,48 +1,377 @@
 {% extends "base.html" %}
-{% block title %}Oiva — Dashboard{% endblock %}
+{% block title %}Dashboard — Oiva{% endblock %}
 {% block content %}
 
-<section id="captures">
-  {% for c in captures %}
-  <div class="capture" data-id="{{ c.id }}">{{ c.text }}</div>
-  {% endfor %}
-</section>
+<div class="dashboard">
 
-<section id="actions">
-  {% for a in actions %}
-  <div class="action" data-id="{{ a.id }}" data-done="{{ a.done }}">
-    <span class="summary">{{ a.summary }}</span>
-    {% if a.deadline %}<span class="deadline">{{ a.deadline }}</span>{% endif %}
-    {% if a.note %}<span class="note">{{ a.note }}</span>{% endif %}
+  <!-- ── LEFT: captures + digest ──────────────────────────────────────── -->
+  <div>
+
+    <!-- Quick captures -->
+    <section class="dash-digest" style="margin-bottom:20px;">
+      <div class="dash-section-header">
+        <h2>Quick capture</h2>
+        <span style="font-size:12px;color:var(--muted);">F5</span>
+      </div>
+
+      <div class="capture-input-row">
+        <input id="capture-input" class="capture-input" type="text"
+               placeholder="Capture a thought, task, or follow-up…" maxlength="500"
+               autocomplete="off">
+        <button class="btn btn-primary btn-sm" id="capture-add-btn">Add</button>
+      </div>
+
+      <div class="capture-list" id="capture-list">
+        {% for c in captures %}
+          <div class="capture-item" data-id="{{ c.id }}">
+            <span class="capture-text">{{ c.text }}</span>
+            <div class="capture-actions">
+              <button class="btn btn-ghost btn-sm capture-promote-btn" data-id="{{ c.id }}"
+                      title="Promote to action">→ Action</button>
+              <button class="btn btn-ghost btn-sm capture-done-btn" data-id="{{ c.id }}"
+                      title="Mark done">✓</button>
+            </div>
+          </div>
+        {% else %}
+          <div class="panel-empty" id="captures-empty">No captures — use the field above or press F5.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Email digest -->
+    <section class="dash-digest">
+      <div class="dash-section-header">
+        <h2>Email digest{% if digest %} — {{ digest.date | fmtdate }}{% endif %}</h2>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="siiri-chat-hint">"Siiri, check the inbox"</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="feed-siiri-btn">↑ Feed Siiri</button>
+        </div>
+      </div>
+
+      {% if not digest %}
+        <div class="dash-notice">Say <strong>"Siiri, check the inbox"</strong> in chat to populate the digest.</div>
+        <div class="empty">No digest yet.</div>
+      {% else %}
+
+        {% set action_items = actions | selectattr('category', 'equalto', 'action') | list %}
+        {% set info_items   = actions | selectattr('category', 'equalto', 'info')   | list %}
+
+        {% if action_items %}
+          <div class="digest-group">
+            <span class="digest-group-label action-label">Action required</span>
+            {% for item in action_items %}
+              <div class="digest-item {% if item.done %}done{% endif %}{% if item.source %} source-{{ item.source | lower }}{% endif %}"
+                   id="item-{{ item.id }}">
+                <label class="check-row">
+                  <input type="checkbox" class="action-check" data-id="{{ item.id }}" {% if item.done %}checked{% endif %}>
+                  <span class="check-summary">
+                    {% if item.digest_date and item.digest_date != digest.date %}
+                      <span class="item-age-badge">{{ item.digest_date | fmtdate }}</span>
+                    {% endif %}
+                    {% if item.replied %}<span class="replied-badge">✓ replied</span>{% endif %}
+                    {% if item.source %}<span class="source-badge source-badge-{{ item.source | lower }}">{{ item.source }}</span>{% endif %}
+                    {% if item.action_verb %}<span class="action-verb-badge">{{ item.action_verb }}</span>{% endif %}
+                    {{ item.summary | bold_md }}
+                  </span>
+                </label>
+                {% if item.deadline %}
+                  <span class="item-deadline">by {{ item.deadline }}</span>
+                {% endif %}
+                {% if item.detail %}
+                  <div class="item-detail">{{ item.detail | bold_md }}</div>
+                {% endif %}
+                {% if item.email_from %}
+                  <div class="item-meta">{{ item.email_from }}{% if item.email_subject %} — {{ item.email_subject }}{% endif %}</div>
+                {% endif %}
+                <textarea class="item-note" data-id="{{ item.id }}"
+                          placeholder="Add note or Siiri instruction…" rows="1">{{ item.note or '' }}</textarea>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if info_items %}
+          <div class="digest-group">
+            <span class="digest-group-label info-label">Worth knowing</span>
+            {% for item in info_items %}
+              <div class="digest-item {% if item.done %}done{% endif %}{% if item.source %} source-{{ item.source | lower }}{% endif %}"
+                   id="item-{{ item.id }}">
+                <label class="check-row">
+                  <input type="checkbox" class="action-check" data-id="{{ item.id }}" {% if item.done %}checked{% endif %}>
+                  <span class="check-summary">
+                    {% if item.digest_date and item.digest_date != digest.date %}
+                      <span class="item-age-badge">{{ item.digest_date | fmtdate }}</span>
+                    {% endif %}
+                    {% if item.replied %}<span class="replied-badge">✓ replied</span>{% endif %}
+                    {% if item.source %}<span class="source-badge source-badge-{{ item.source | lower }}">{{ item.source }}</span>{% endif %}
+                    {{ item.summary }}
+                  </span>
+                </label>
+                {% if item.detail %}
+                  <div class="item-detail">{{ item.detail | bold_md }}</div>
+                {% endif %}
+                <textarea class="item-note" data-id="{{ item.id }}"
+                          placeholder="Add note or Siiri instruction…" rows="1">{{ item.note or '' }}</textarea>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if digest.noise_count and digest.noise_count > 0 %}
+          <div class="noise-count">{{ digest.noise_count }} noise email{{ 's' if digest.noise_count != 1 }} filtered</div>
+        {% endif %}
+
+      {% endif %}
+    </section>
   </div>
-  {% endfor %}
-</section>
 
-<section id="urgent">
-  {% for item in urgent_items %}
-  <div class="urgent-item">{{ item.title }}</div>
-  {% endfor %}
-</section>
+  <!-- ── RIGHT: aside panels ──────────────────────────────────────────── -->
+  <aside class="dash-aside">
 
-<section id="meetings">
-  {% if next_meeting %}
-  <div class="next-meeting">
-    {{ next_meeting.title }}
-    {% if days_away is not none %} — {{ days_away }} days away{% endif %}
-  </div>
-  {% endif %}
-</section>
+    <!-- Top 5 Urgent -->
+    <div class="dash-panel">
+      <div class="dash-panel-title">Top 5 urgent</div>
+      <div id="urgent-list">
+        {% if urgent_items %}
+          {% for item in urgent_items %}
+            <div class="urgent-row{% if item.days_away == 0 %} urgent-today{% elif item.days_away < 0 %} urgent-overdue{% endif %}"
+                 data-type="{{ item.type }}" data-id="{{ item.id }}">
+              <input type="checkbox" class="urgent-check" title="Dismiss">
+              <span class="urgent-verb urgent-verb-{{ item.type }}">{{ item.verb }}</span>
+              <span class="urgent-title">{{ item.title }}</span>
+              <span class="urgent-days">
+                {%- if item.days_away == 0 %}today
+                {%- elif item.days_away < 0 %}{{ item.days_away | abs }}d ago
+                {%- else %}in {{ item.days_away }}d
+                {%- endif %}
+              </span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="panel-empty">No upcoming deadlines or meetings.</div>
+        {% endif %}
+      </div>
+    </div>
 
-<section id="followups">
-  {% for f in followups %}
-  <div class="followup">{{ f.note }}</div>
-  {% endfor %}
-</section>
+    <!-- Next meeting -->
+    {% if next_meeting %}
+    <div class="dash-panel dash-meeting">
+      <div class="dash-panel-title">Next meeting</div>
+      <div class="meeting-title">{{ next_meeting.title }}</div>
+      <div class="meeting-date">{{ next_meeting.date | fmtdate }}{% if next_meeting.location %} · {{ next_meeting.location }}{% endif %}</div>
+      <div class="meeting-countdown">
+        {% if days_away > 0 %}
+          <span class="countdown-num">{{ days_away }}</span> days away
+        {% elif days_away == 0 %}
+          <span class="countdown-today">Today</span>
+        {% else %}
+          <span class="countdown-past">{{ days_away | abs }} days ago</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
-<section id="projects">
-  {% for p in active_projects %}
-  <div class="project">{{ p.name }}</div>
-  {% endfor %}
-</section>
+    <!-- My follow-ups -->
+    <div class="dash-panel">
+      <div class="dash-panel-title">My follow-ups</div>
+      {% if followups %}
+        {% for f in followups %}
+          <a href="#item-{{ f.id }}" class="dash-followup-row">
+            <span class="task-dot"></span>
+            <span>{{ f.note }}</span>
+          </a>
+        {% endfor %}
+      {% else %}
+        <div class="panel-empty">No follow-up notes yet.</div>
+      {% endif %}
+    </div>
+
+    <!-- Active projects -->
+    <div class="dash-panel">
+      <div class="dash-panel-title">Active projects</div>
+      {% if active_projects %}
+        {% for p in active_projects %}
+          <div class="dash-project-row">
+            <span>{{ p.name }}</span>
+            {% if p.deadline %}<span class="project-deadline">{{ p.deadline | fmtdate }}</span>{% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="panel-empty">No active projects.</div>
+      {% endif %}
+    </div>
+
+  </aside>
+</div>
+
+<script>
+// ── Digest checkboxes ──────────────────────────────────────────────────────
+document.querySelectorAll('.action-check').forEach(cb => {
+  cb.addEventListener('change', function() {
+    const id   = this.dataset.id;
+    const item = document.getElementById('item-' + id);
+    fetch(`/digest/action/${id}/toggle`, {method: 'POST'})
+      .then(r => r.json())
+      .then(() => item.classList.toggle('done', this.checked));
+  });
+});
+
+// ── Item notes — auto-resize + save on blur ────────────────────────────────
+document.querySelectorAll('.item-note').forEach(ta => {
+  function resize() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+  if (ta.value) resize();
+  ta.addEventListener('input', resize);
+  ta.addEventListener('blur', function() {
+    fetch(`/digest/action/${this.dataset.id}/note`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({note: this.value})
+    });
+  });
+});
+
+// Note visual classification (Siiri prefix = purple, other text = yellow)
+function classifyNote(ta) {
+  ta.classList.remove('note-siiri', 'note-personal');
+  const v = ta.value.trim();
+  if (v.startsWith('Siiri')) ta.classList.add('note-siiri');
+  else if (v) ta.classList.add('note-personal');
+}
+document.querySelectorAll('.item-note').forEach(ta => {
+  classifyNote(ta);
+  ta.addEventListener('input', () => classifyNote(ta));
+});
+
+// ── Follow-up click → flash target digest item ─────────────────────────────
+document.querySelectorAll('.dash-followup-row').forEach(link => {
+  link.addEventListener('click', function() {
+    const target = document.querySelector(this.getAttribute('href'));
+    if (!target) return;
+    target.classList.remove('flashing');
+    void target.offsetWidth;
+    target.classList.add('flashing');
+    target.addEventListener('animationend', () => target.classList.remove('flashing'), {once: true});
+  });
+});
+
+// ── Top 5 Urgent ───────────────────────────────────────────────────────────
+function daysLabel(d) {
+  if (d === 0) return 'today';
+  if (d < 0)  return Math.abs(d) + 'd ago';
+  return 'in ' + d + 'd';
+}
+function renderUrgentList(items) {
+  const list = document.getElementById('urgent-list');
+  if (!items.length) {
+    list.innerHTML = '<div class="panel-empty">No upcoming deadlines or meetings.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const today = item.days_away === 0 ? ' urgent-today'   : '';
+    const over  = item.days_away <  0  ? ' urgent-overdue' : '';
+    return `<div class="urgent-row${today}${over}" data-type="${item.type}" data-id="${item.id}">
+      <input type="checkbox" class="urgent-check" title="Dismiss">
+      <span class="urgent-verb urgent-verb-${item.type}">${item.verb}</span>
+      <span class="urgent-title">${item.title}</span>
+      <span class="urgent-days">${daysLabel(item.days_away)}</span>
+    </div>`;
+  }).join('');
+  attachUrgentChecks();
+}
+function attachUrgentChecks() {
+  document.querySelectorAll('#urgent-list .urgent-check').forEach(cb => {
+    cb.addEventListener('change', function() {
+      const row  = this.closest('.urgent-row');
+      const type = row.dataset.type;
+      const id   = row.dataset.id;
+      const url  = type === 'meeting'
+        ? `/meetings/${id}/dismiss`
+        : `/digest/action/${id}/toggle`;
+      row.style.transition = 'opacity .25s';
+      row.style.opacity = '0';
+      fetch(url, {method: 'POST'})
+        .then(() => fetch('/meetings/urgent-items'))
+        .then(r => r.json())
+        .then(renderUrgentList);
+    });
+  });
+}
+attachUrgentChecks();
+
+// ── Feed Siiri ─────────────────────────────────────────────────────────────
+document.getElementById('feed-siiri-btn')?.addEventListener('click', function() {
+  const btn = this;
+  btn.textContent = '⏳ Saving…';
+  btn.disabled = true;
+  fetch('/digest/feed-siiri', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      btn.textContent = d.ok ? `✓ ${d.count} saved` : `✗ ${d.msg}`;
+      setTimeout(() => { btn.textContent = '↑ Feed Siiri'; btn.disabled = false; }, 2500);
+    });
+});
+
+// ── Quick captures ─────────────────────────────────────────────────────────
+function addCapture(text) {
+  text = text.trim();
+  if (!text) return;
+  fetch('/captures/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.ok) return;
+    const empty = document.getElementById('captures-empty');
+    if (empty) empty.remove();
+    const list = document.getElementById('capture-list');
+    const div  = document.createElement('div');
+    div.className = 'capture-item';
+    div.dataset.id = d.capture.id;
+    div.innerHTML = `
+      <span class="capture-text">${escapeHtml(d.capture.text)}</span>
+      <div class="capture-actions">
+        <button class="btn btn-ghost btn-sm capture-promote-btn" data-id="${d.capture.id}" title="Promote to action">→ Action</button>
+        <button class="btn btn-ghost btn-sm capture-done-btn" data-id="${d.capture.id}" title="Mark done">✓</button>
+      </div>`;
+    list.prepend(div);
+    attachCaptureEvents(div);
+    document.getElementById('capture-input').value = '';
+  });
+}
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+document.getElementById('capture-add-btn').addEventListener('click', () => {
+  addCapture(document.getElementById('capture-input').value);
+});
+document.getElementById('capture-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCapture(e.target.value);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'F5') {
+    e.preventDefault();
+    document.getElementById('capture-input').focus();
+  }
+});
+
+function attachCaptureEvents(el) {
+  el.querySelector('.capture-done-btn')?.addEventListener('click', function() {
+    const id = this.dataset.id;
+    fetch(`/captures/${id}/done`, {method: 'POST'})
+      .then(() => el.remove());
+  });
+  el.querySelector('.capture-promote-btn')?.addEventListener('click', function() {
+    const id = this.dataset.id;
+    fetch(`/captures/${id}/promote`, {method: 'POST'})
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) el.remove();
+      });
+  });
+}
+document.querySelectorAll('.capture-item').forEach(attachCaptureEvents);
+</script>
 
 {% endblock %}

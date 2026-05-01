@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Tests — Oiva{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+  <h1 style="font-size:22px;font-weight:700;">Test runner</h1>
+  <button class="btn btn-primary" id="run-btn">▶ Run tests</button>
+</div>
+
+<div id="run-output" style="display:none;">
+  <div id="run-summary" style="margin-bottom:16px;font-size:15px;font-weight:600;"></div>
+  <div id="run-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+</div>
+
+{% if history %}
+<h2 style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:28px 0 12px;">Recent runs</h2>
+<table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+  <thead>
+    <tr style="border-bottom:2px solid var(--border);">
+      <th style="text-align:left;padding:6px 10px;">Run</th>
+      <th style="text-align:left;padding:6px 10px;">Time</th>
+      <th style="text-align:right;padding:6px 10px;">Passed</th>
+      <th style="text-align:right;padding:6px 10px;">Failed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in history %}
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 10px;">#{{ r.id }}</td>
+      <td style="padding:6px 10px;color:var(--muted);">{{ r.run_at }}</td>
+      <td style="padding:6px 10px;text-align:right;color:var(--green);font-weight:600;">{{ r.passed }}</td>
+      <td style="padding:6px 10px;text-align:right;color:{% if r.failed > 0 %}var(--danger){% else %}var(--muted){% endif %};font-weight:600;">{{ r.failed }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<script>
+document.getElementById('run-btn').addEventListener('click', function() {
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  const output = document.getElementById('run-output');
+  const summary = document.getElementById('run-summary');
+  const list = document.getElementById('run-list');
+  output.style.display = 'none';
+  list.innerHTML = '';
+
+  fetch('/admin/tests', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.textContent = '▶ Run tests';
+      const color = d.failed > 0 ? 'var(--danger)' : 'var(--green)';
+      summary.innerHTML = `<span style="color:${color}">${d.passed} passed, ${d.failed} failed</span> — ${d.total} total`;
+      list.innerHTML = (d.tests || []).map(t => {
+        const ok = t.status === 'PASSED';
+        return `<div style="font-size:13px;padding:3px 8px;border-radius:4px;background:${ok ? '#dcfce7' : '#fee2e2'};color:${ok ? '#166534' : '#991b1b'};">
+          ${ok ? '✓' : '✗'} ${t.name}
+        </div>`;
+      }).join('');
+      output.style.display = '';
+    });
+});
+</script>
+{% endblock %}
