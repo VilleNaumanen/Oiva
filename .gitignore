@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.env
+.env
+
+# Flask / app
+instance/
+uploads/
+flask.log
+
+# Database (data lives outside repo)
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
