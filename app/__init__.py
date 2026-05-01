@@ -3,9 +3,11 @@ from flask import Flask
 from config import config
 
 
-def create_app(config_name: str = "default") -> Flask:
+def create_app(config_name: str = "default", test_config: dict | None = None) -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(config[config_name])
+    if test_config:
+        app.config.update(test_config)
 
     os.makedirs(app.config["UPLOADS"], exist_ok=True)
 

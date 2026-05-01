@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Oiva — Dashboard{% endblock %}
+{% block content %}
+
+<section id="captures">
+  {% for c in captures %}
+  <div class="capture" data-id="{{ c.id }}">{{ c.text }}</div>
+  {% endfor %}
+</section>
+
+<section id="actions">
+  {% for a in actions %}
+  <div class="action" data-id="{{ a.id }}" data-done="{{ a.done }}">
+    <span class="summary">{{ a.summary }}</span>
+    {% if a.deadline %}<span class="deadline">{{ a.deadline }}</span>{% endif %}
+    {% if a.note %}<span class="note">{{ a.note }}</span>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<section id="urgent">
+  {% for item in urgent_items %}
+  <div class="urgent-item">{{ item.title }}</div>
+  {% endfor %}
+</section>
+
+<section id="meetings">
+  {% if next_meeting %}
+  <div class="next-meeting">
+    {{ next_meeting.title }}
+    {% if days_away is not none %} — {{ days_away }} days away{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<section id="followups">
+  {% for f in followups %}
+  <div class="followup">{{ f.note }}</div>
+  {% endfor %}
+</section>
+
+<section id="projects">
+  {% for p in active_projects %}
+  <div class="project">{{ p.name }}</div>
+  {% endfor %}
+</section>
+
+{% endblock %}
