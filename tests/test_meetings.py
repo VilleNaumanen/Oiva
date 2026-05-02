@@ -65,3 +65,63 @@ def test_urgent_items_capped_at_five(client, db):
     for i in range(8):
         seed_action(db, did, summary=f"Task {i}", deadline=f"2099-{i+1:02d}-01")
     assert len(client.get("/meetings/urgent-items").get_json()) <= 5
+
+
+# ── Meetings index ─────────────────────────────────────────────────────────────
+
+def test_meetings_index_loads(client):
+    r = client.get("/meetings/")
+    assert r.status_code == 200
+
+
+# ── Calendar import ────────────────────────────────────────────────────────────
+
+def test_import_calendar_empty_folder(client):
+    r = client.post("/meetings/import-calendar")
+    data = r.get_json()
+    assert data["ok"] is True
+    assert data["imported"] == 0
+
+
+def test_import_calendar_creates_meeting(client, app, db, tmp_path):
+    import json
+    cal_dir = tmp_path / "cal_import"
+    cal_dir.mkdir()
+    app.config["CALENDAR"] = str(cal_dir)
+    (cal_dir / "2099-05-01_meeting.json").write_text(json.dumps({
+        "title": "PA Meeting", "date": "2099-05-01",
+        "time_start": "10:00", "time_end": "11:00",
+        "location": "Teams", "organizer": "boss@kempower.com",
+        "source": "kempower",
+    }))
+    r = client.post("/meetings/import-calendar")
+    assert r.get_json() == {"ok": True, "imported": 1}
+    row = db.execute("SELECT * FROM meetings WHERE title='PA Meeting'").fetchone()
+    assert row is not None
+    assert row["location"] == "Teams"
+
+
+def test_import_calendar_skips_duplicate(client, app, db, tmp_path):
+    import json
+    cal_dir = tmp_path / "cal_dup"
+    cal_dir.mkdir()
+    app.config["CALENDAR"] = str(cal_dir)
+    payload = json.dumps({"title": "Dup Meeting", "date": "2099-06-01", "source": "kempower"})
+    (cal_dir / "dup.json").write_text(payload)
+    client.post("/meetings/import-calendar")
+    # re-create file after archive
+    (cal_dir / "dup2.json").write_text(payload)
+    client.post("/meetings/import-calendar")
+    count = db.execute("SELECT COUNT(*) FROM meetings WHERE title='Dup Meeting'").fetchone()[0]
+    assert count == 1
+
+
+# ── Snooze urgent (projects) ───────────────────────────────────────────────────
+
+def test_snooze_urgent_noop(client, db):
+    from .conftest import seed_project
+    pid = seed_project(db, name="Snooze Me", deadline="2099-12-01")
+    r = client.post(f"/projects/{pid}/snooze-urgent")
+    assert r.get_json()["ok"] is True
+    row = db.execute("SELECT * FROM projects WHERE id=?", [pid]).fetchone()
+    assert row["status"] == "active"

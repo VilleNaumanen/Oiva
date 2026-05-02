@@ -51,3 +51,8 @@ def close(project_id):
                [project_id])
     db.commit()
     return jsonify({"ok": True})
+
+
+@bp.route("/<int:project_id>/snooze-urgent", methods=["POST"])
+def snooze_urgent(project_id):
+    return jsonify({"ok": True})
