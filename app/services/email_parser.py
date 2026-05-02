@@ -90,18 +90,5 @@ def archive_inbox_emails(inbox: str) -> None:
             pass
 
     db.commit()
-    _mark_replied_actions(db)
-
-
-def _mark_replied_actions(db) -> None:
-    sent_keys = {r["thread_key"] for r in db.execute(
-        "SELECT DISTINCT thread_key FROM emails WHERE direction='sent' AND thread_key IS NOT NULL AND thread_key != ''"
-    ).fetchall()}
-    if not sent_keys:
-        return
-    for action in db.execute(
-        "SELECT id, email_subject FROM digest_actions WHERE replied=0 AND email_subject IS NOT NULL AND email_subject != ''"
-    ).fetchall():
-        if thread_key(action["email_subject"]) in sent_keys:
-            db.execute("UPDATE digest_actions SET replied=1 WHERE id=?", [action["id"]])
-    db.commit()
+    from .reply import get_sent_thread_keys, mark_replied_by_thread
+    mark_replied_by_thread(db, get_sent_thread_keys(db))

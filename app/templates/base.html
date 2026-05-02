@@ -21,6 +21,8 @@
            class="nav-tab {% if request.blueprint == 'meetings' %}active{% endif %}">Meetings</a>
         <a href="{{ url_for('notes.index') }}"
            class="nav-tab {% if request.blueprint == 'notes' %}active{% endif %}">Notes</a>
+        <a href="{{ url_for('replies.index') }}"
+           class="nav-tab {% if request.blueprint == 'replies' %}active{% endif %}">Replies</a>
         <a href="{{ url_for('admin.tests') }}"
            class="nav-tab {% if request.blueprint == 'admin' %}active{% endif %}">Tests</a>
       </nav>

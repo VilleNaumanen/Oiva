@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Replies — Oiva{% endblock %}
+{% block content %}
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Replies</h1>
+</div>
+
+{% if replied_actions %}
+  {% for item in replied_actions %}
+    <div class="dash-digest" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:500;margin-bottom:4px;">{{ item.summary }}</div>
+          {% if item.email_from or item.email_subject %}
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">
+              {{ item.email_from }}{% if item.email_from and item.email_subject %} — {% endif %}{{ item.email_subject }}
+            </div>
+          {% endif %}
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="replied-badge">✓ replied</span>
+            {% if item.digest_date %}
+              <span style="font-size:11px;color:var(--muted);">digest {{ item.digest_date }}</span>
+            {% endif %}
+            {% if item.replied_at %}
+              <span style="font-size:11px;color:var(--muted);">replied {{ item.replied_at[:10] }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">No replied actions yet.</div>
+{% endif %}
+
+{% endblock %}
