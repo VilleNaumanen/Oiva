@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Weekly Summaries — Oiva{% endblock %}
+{% block content %}
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Weekly Summaries</h1>
+</div>
+
+<!-- Generate panel -->
+<div class="dash-digest" style="margin-bottom:20px;">
+  <h2 style="font-size:15px;font-weight:600;margin-bottom:12px;">Generate summary</h2>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:12px;color:var(--muted);">Week starting (Monday)</label>
+      <input type="date" id="ws-date" class="capture-input" style="width:180px;">
+    </div>
+    <button class="btn btn-primary btn-sm" id="ws-generate-btn" style="margin-top:18px;">Generate</button>
+    <span id="ws-msg" style="font-size:13px;color:var(--muted);margin-top:18px;"></span>
+  </div>
+</div>
+
+<!-- Summaries list -->
+{% if summaries %}
+  {% for s in summaries %}
+    <div class="dash-digest" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+           onclick="toggleSummary({{ s.id }})">
+        <div>
+          <span style="font-size:14px;font-weight:600;">
+            {{ s.week_start }} – {{ s.week_end }}
+          </span>
+          <span style="font-size:12px;color:var(--muted);margin-left:10px;">
+            generated {{ s.created_at[:10] }}
+          </span>
+        </div>
+        <span id="toggle-icon-{{ s.id }}" style="color:var(--muted);font-size:13px;">▼</span>
+      </div>
+      <div id="summary-body-{{ s.id }}" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.6;margin:0;">{{ s.content }}</pre>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">No summaries yet. Generate one above.</div>
+{% endif %}
+
+<script>
+// ── Default date to last Monday ────────────────────────────────────────────
+(function() {
+  const today = new Date();
+  const day   = today.getDay();  // 0=Sun, 1=Mon, …
+  const diff  = day === 0 ? -6 : 1 - day;  // days back to last Monday
+  const lastMon = new Date(today);
+  lastMon.setDate(today.getDate() + diff - 7);  // previous complete week
+  document.getElementById('ws-date').value = lastMon.toISOString().slice(0, 10);
+})();
+
+// ── Generate ───────────────────────────────────────────────────────────────
+document.getElementById('ws-generate-btn').addEventListener('click', function() {
+  const btn  = this;
+  const msg  = document.getElementById('ws-msg');
+  const date = document.getElementById('ws-date').value;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating…';
+  msg.textContent = '';
+  fetch('/weekly-summaries/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({week_start: date || null})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      location.reload();
+    } else {
+      msg.textContent = d.msg;
+      btn.textContent = 'Generate';
+      btn.disabled = false;
+    }
+  });
+});
+
+// ── Toggle expand ──────────────────────────────────────────────────────────
+function toggleSummary(id) {
+  const body = document.getElementById('summary-body-' + id);
+  const icon = document.getElementById('toggle-icon-' + id);
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    icon.textContent = '▲';
+  } else {
+    body.style.display = 'none';
+    icon.textContent = '▼';
+  }
+}
+</script>
+
+{% endblock %}

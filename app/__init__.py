@@ -49,6 +49,7 @@ def _register_blueprints(app: Flask) -> None:
     from .routes.contacts import bp as contacts_bp
     from .routes.notes import bp as notes_bp
     from .routes.replies import bp as replies_bp
+    from .routes.weekly_summaries import bp as weekly_summaries_bp
     from .routes.admin import bp as admin_bp
 
     app.register_blueprint(dashboard_bp)
@@ -58,5 +59,6 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(projects_bp, url_prefix="/projects")
     app.register_blueprint(contacts_bp, url_prefix="/contacts")
     app.register_blueprint(notes_bp,    url_prefix="/notes")
-    app.register_blueprint(replies_bp,  url_prefix="/replies")
-    app.register_blueprint(admin_bp,    url_prefix="/admin")
+    app.register_blueprint(replies_bp,          url_prefix="/replies")
+    app.register_blueprint(weekly_summaries_bp, url_prefix="/weekly-summaries")
+    app.register_blueprint(admin_bp,            url_prefix="/admin")
