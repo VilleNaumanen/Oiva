@@ -47,12 +47,14 @@ def _register_blueprints(app: Flask) -> None:
     from .routes.captures import bp as captures_bp
     from .routes.projects import bp as projects_bp
     from .routes.contacts import bp as contacts_bp
+    from .routes.notes import bp as notes_bp
     from .routes.admin import bp as admin_bp
 
     app.register_blueprint(dashboard_bp)
-    app.register_blueprint(digest_bp, url_prefix="/digest")
+    app.register_blueprint(digest_bp,   url_prefix="/digest")
     app.register_blueprint(meetings_bp, url_prefix="/meetings")
     app.register_blueprint(captures_bp, url_prefix="/captures")
     app.register_blueprint(projects_bp, url_prefix="/projects")
     app.register_blueprint(contacts_bp, url_prefix="/contacts")
-    app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(notes_bp,    url_prefix="/notes")
+    app.register_blueprint(admin_bp,    url_prefix="/admin")

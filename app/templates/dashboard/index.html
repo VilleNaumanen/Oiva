@@ -201,6 +201,20 @@
       {% endif %}
     </div>
 
+    <!-- Quick note -->
+    <div class="dash-panel">
+      <div class="dash-panel-title">Quick note</div>
+      <textarea id="qn-content" class="capture-input" placeholder="Write a note…" rows="3"
+                style="width:100%;resize:vertical;margin-bottom:6px;"></textarea>
+      <input id="qn-tags" class="capture-input" placeholder="Tags (comma-separated)"
+             style="width:100%;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-primary btn-sm" id="qn-save-btn">Save note</button>
+        <a href="{{ url_for('notes.index') }}" class="btn btn-ghost btn-sm">All notes →</a>
+      </div>
+      <span id="qn-msg" style="font-size:12px;color:var(--muted);display:block;margin-top:6px;"></span>
+    </div>
+
   </aside>
 </div>
 
@@ -398,6 +412,31 @@ function attachCaptureEvents(el) {
   });
 }
 document.querySelectorAll('.capture-item').forEach(attachCaptureEvents);
+
+// ── Quick note ─────────────────────────────────────────────────────────────
+document.getElementById('qn-save-btn').addEventListener('click', () => {
+  const content = document.getElementById('qn-content').value.trim();
+  const msg     = document.getElementById('qn-msg');
+  if (!content) { msg.textContent = 'Write something first.'; return; }
+  const tags = document.getElementById('qn-tags').value
+    .split(',').map(t => t.trim()).filter(Boolean);
+  fetch('/notes/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({content, tags})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      document.getElementById('qn-content').value = '';
+      document.getElementById('qn-tags').value    = '';
+      msg.textContent = '✓ Saved';
+      setTimeout(() => { msg.textContent = ''; }, 2000);
+    } else {
+      msg.textContent = d.msg;
+    }
+  });
+});
 </script>
 
 {% endblock %}

@@ -24,6 +24,10 @@ EXPECTED_ROUTES = {
     "/projects/", "/projects/add",
     "/projects/<int:project_id>/snooze-urgent",
     "/contacts/", "/contacts/add",
+    "/notes/", "/notes/add",
+    "/notes/<int:note_id>/update", "/notes/<int:note_id>/delete",
+    "/notes/<int:note_id>/attach",
+    "/notes/<int:note_id>/attach/<int:attach_id>/delete",
     "/admin/tests",
 }
 
