@@ -18,13 +18,14 @@ from app import create_app
 
 @pytest.fixture
 def app(tmp_path):
-    inbox_dir = tmp_path / "inbox"
-    inbox_dir.mkdir()
+    inbox_dir    = tmp_path / "inbox";    inbox_dir.mkdir()
+    calendar_dir = tmp_path / "calendar"; calendar_dir.mkdir()
     _app = create_app("testing", test_config={
         "DB_PATH":     str(tmp_path / "test.db"),
         "INBOX":       str(inbox_dir),
         "SIIRI_PREFS": str(tmp_path / "prefs.md"),
         "UPLOADS":     str(tmp_path / "uploads"),
+        "CALENDAR":    str(calendar_dir),
     })
     yield _app
 

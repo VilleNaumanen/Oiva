@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Meetings — Oiva{% endblock %}
+{% block content %}
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Meetings</h1>
+  <button class="btn btn-primary btn-sm" id="new-meeting-btn">+ Add meeting</button>
+</div>
+
+<!-- Add meeting form -->
+<div id="new-meeting-form" class="dash-digest" style="display:none;margin-bottom:20px;">
+  <h2 style="font-size:15px;font-weight:600;margin-bottom:14px;">New meeting</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <input id="nm-title"      class="capture-input" placeholder="Title *"     style="grid-column:1/-1;">
+    <input id="nm-date"       class="capture-input" type="date">
+    <input id="nm-location"   class="capture-input" placeholder="Location">
+    <input id="nm-time-start" class="capture-input" type="time" placeholder="Start">
+    <input id="nm-time-end"   class="capture-input" type="time" placeholder="End">
+    <input id="nm-organizer"  class="capture-input" placeholder="Organiser">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn btn-primary btn-sm"   id="nm-save-btn">Save</button>
+    <button class="btn btn-secondary btn-sm" id="nm-cancel-btn">Cancel</button>
+    <span id="nm-msg" style="font-size:13px;color:var(--muted);"></span>
+  </div>
+</div>
+
+<!-- Upcoming meetings -->
+<div class="dash-digest" style="margin-bottom:20px;">
+  <div class="dash-section-header" style="margin-bottom:12px;">
+    <h2>Upcoming</h2>
+  </div>
+  {% for m in upcoming %}
+    <div class="digest-item" id="meeting-{{ m.id }}" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:2px;">{{ m.title }}</div>
+          <div style="font-size:12px;color:var(--muted);">
+            {{ m.date | fmtdate }}
+            {% if m.time_start %} · {{ m.time_start }}{% if m.time_end %}–{{ m.time_end }}{% endif %}{% endif %}
+            {% if m.location %} · {{ m.location }}{% endif %}
+            {% if m.organizer %} · <em>{{ m.organizer }}</em>{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm meeting-dismiss-btn" data-id="{{ m.id }}" title="Dismiss">✓</button>
+          <button class="btn btn-ghost btn-sm meeting-delete-btn"  data-id="{{ m.id }}" title="Delete">✕</button>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="panel-empty">No upcoming meetings.</div>
+  {% endfor %}
+</div>
+
+<!-- Recent past -->
+{% if past %}
+<div class="dash-digest">
+  <div class="dash-section-header" style="margin-bottom:12px;">
+    <h2 style="color:var(--muted);font-size:14px;">Recent (last 2 weeks)</h2>
+  </div>
+  {% for m in past %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);opacity:.6;">
+      <div>
+        <span style="font-size:13px;font-weight:500;">{{ m.title }}</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">{{ m.date | fmtdate }}{% if m.location %} · {{ m.location }}{% endif %}</span>
+      </div>
+      <button class="btn btn-ghost btn-sm meeting-delete-btn" data-id="{{ m.id }}" title="Delete">✕</button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+// ── New meeting ────────────────────────────────────────────────────────────
+document.getElementById('new-meeting-btn').addEventListener('click', () => {
+  document.getElementById('new-meeting-form').style.display = '';
+  document.getElementById('nm-title').focus();
+});
+document.getElementById('nm-cancel-btn').addEventListener('click', () => {
+  document.getElementById('new-meeting-form').style.display = 'none';
+});
+document.getElementById('nm-save-btn').addEventListener('click', () => {
+  const title = document.getElementById('nm-title').value.trim();
+  const dt    = document.getElementById('nm-date').value;
+  if (!title || !dt) { document.getElementById('nm-msg').textContent = 'Title and date required'; return; }
+  fetch('/meetings/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      title,
+      date:       dt,
+      time_start: document.getElementById('nm-time-start').value || null,
+      time_end:   document.getElementById('nm-time-end').value   || null,
+      location:   document.getElementById('nm-location').value.trim()  || null,
+      organizer:  document.getElementById('nm-organizer').value.trim() || null,
+    })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.ok) location.reload(); else document.getElementById('nm-msg').textContent = d.msg; });
+});
+
+// ── Dismiss / Delete ───────────────────────────────────────────────────────
+document.querySelectorAll('.meeting-dismiss-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    fetch(`/meetings/${this.dataset.id}/dismiss`, {method: 'POST'})
+      .then(() => document.getElementById('meeting-' + this.dataset.id)?.remove());
+  });
+});
+document.querySelectorAll('.meeting-delete-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id  = this.dataset.id;
+    const row = this.closest('[id^="meeting-"]') || this.closest('div');
+    fetch(`/meetings/delete/${id}`, {method: 'POST'})
+      .then(() => row.remove());
+  });
+});
+</script>
+
+{% endblock %}

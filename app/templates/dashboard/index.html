@@ -286,13 +286,21 @@ function attachUrgentChecks() {
       const id   = row.dataset.id;
       const url  = type === 'meeting'
         ? `/meetings/${id}/dismiss`
+        : type === 'project'
+        ? `/projects/${id}/snooze-urgent`
         : `/digest/action/${id}/toggle`;
       row.style.transition = 'opacity .25s';
       row.style.opacity = '0';
       fetch(url, {method: 'POST'})
-        .then(() => fetch('/meetings/urgent-items'))
-        .then(r => r.json())
-        .then(renderUrgentList);
+        .then(() => {
+          if (type === 'project') {
+            setTimeout(() => row.remove(), 250);
+          } else {
+            return fetch('/meetings/urgent-items')
+              .then(r => r.json())
+              .then(renderUrgentList);
+          }
+        });
     });
   });
 }

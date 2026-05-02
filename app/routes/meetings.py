@@ -1,9 +1,25 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template, current_app
 from ..database import get_db
 from ..services.urgent import get_urgent_items
-from datetime import date
+from datetime import date, timedelta
 
 bp = Blueprint("meetings", __name__)
+
+
+@bp.route("/")
+def index():
+    db = get_db()
+    today = date.today().isoformat()
+    two_weeks_ago = (date.today() - timedelta(days=14)).isoformat()
+    upcoming = db.execute(
+        "SELECT * FROM meetings WHERE date >= ? AND done=0 ORDER BY date ASC",
+        [today]
+    ).fetchall()
+    past = db.execute(
+        "SELECT * FROM meetings WHERE date >= ? AND date < ? ORDER BY date DESC LIMIT 20",
+        [two_weeks_ago, today]
+    ).fetchall()
+    return render_template("meetings/index.html", upcoming=upcoming, past=past, today=today)
 
 
 @bp.route("/add", methods=["POST"])
@@ -43,3 +59,11 @@ def urgent_items():
     db = get_db()
     items = get_urgent_items(db, date.today().isoformat())
     return jsonify(items)
+
+
+@bp.route("/import-calendar", methods=["POST"])
+def import_calendar():
+    from ..services.calendar_parser import import_calendar_files
+    db = get_db()
+    n = import_calendar_files(db, current_app.config)
+    return jsonify({"ok": True, "imported": n})

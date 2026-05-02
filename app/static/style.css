@@ -228,7 +228,8 @@ main { max-width: 1140px; margin: 0 auto; padding: 28px 24px 60px; }
   padding: 2px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
 }
 .urgent-verb-meeting { background: var(--navy); color: #fff; }
-.urgent-verb-action  { background: #e0e7ff; color: #3730a3; }
+.urgent-verb-action   { background: #e0e7ff; color: #3730a3; }
+.urgent-verb-project  { background: #fff7ed; color: #c2410c; }
 .urgent-title { flex: 1; font-size: 13px; color: var(--text); min-width: 0; }
 .urgent-days  { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; margin-left: auto; }
 .urgent-check {
