@@ -1,6 +1,110 @@
 {% extends "base.html" %}
 {% block title %}{{ contact.name }} — Oiva{% endblock %}
 {% block content %}
-<h1 style="font-size:22px;font-weight:700;margin-bottom:8px;">{{ contact.name }}</h1>
-{% if contact.organisation %}<p style="color:var(--muted);">{{ contact.organisation }}</p>{% endif %}
+
+<a href="/contacts/" class="btn btn-ghost btn-sm" style="margin-bottom:16px;display:inline-block;">← Contacts</a>
+
+<!-- Contact card -->
+<div class="dash-digest" style="margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;">
+        {{ contact.name[0] | upper }}
+      </div>
+      <div>
+        <h1 style="font-size:20px;font-weight:700;margin-bottom:2px;">{{ contact.name }}</h1>
+        <div style="font-size:13px;color:var(--muted);">
+          {{ contact.role }}{% if contact.role and contact.organisation %} · {% endif %}{{ contact.organisation }}
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="cd-edit-btn">Edit</button>
+  </div>
+
+  {% if contact.email %}
+    <div style="margin-top:12px;font-size:13px;">
+      <span style="color:var(--muted);">Email:</span>
+      <a href="mailto:{{ contact.email }}" style="color:var(--accent);margin-left:6px;">{{ contact.email }}</a>
+    </div>
+  {% endif %}
+
+  {% if contact.notes %}
+    <div style="margin-top:8px;font-size:13px;color:var(--muted);white-space:pre-wrap;">{{ contact.notes }}</div>
+  {% endif %}
+
+  <!-- Edit form -->
+  <div id="cd-edit-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <input id="cd-name"         class="capture-input" placeholder="Full name *"   value="{{ contact.name }}"           style="grid-column:1/-1;">
+      <input id="cd-organisation" class="capture-input" placeholder="Organisation"  value="{{ contact.organisation or '' }}">
+      <input id="cd-role"         class="capture-input" placeholder="Role / title"  value="{{ contact.role or '' }}">
+      <input id="cd-email"        class="capture-input" type="email" placeholder="Email" value="{{ contact.email or '' }}" style="grid-column:1/-1;">
+      <textarea id="cd-notes"     class="capture-input" placeholder="Notes" rows="3"
+                style="grid-column:1/-1;resize:vertical;">{{ contact.notes or '' }}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-primary btn-sm"   id="cd-save-btn">Save</button>
+      <button class="btn btn-secondary btn-sm" id="cd-cancel-btn">Cancel</button>
+      <span id="cd-msg" style="font-size:13px;color:var(--muted);"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Recent email activity -->
+<div class="dash-digest">
+  <div class="dash-section-header" style="margin-bottom:12px;">
+    <h2>Recent email activity</h2>
+  </div>
+  {% if recent_actions %}
+    {% for item in recent_actions %}
+      <div class="digest-item {% if item.done %}done{% endif %}" style="margin-bottom:8px;">
+        <div class="check-summary">
+          {% if item.action_verb %}<span class="action-verb-badge">{{ item.action_verb }}</span>{% endif %}
+          {{ item.summary }}
+        </div>
+        {% if item.email_subject %}
+          <div class="item-meta">{{ item.email_subject }}</div>
+        {% endif %}
+        {% if item.deadline %}
+          <span class="item-deadline">by {{ item.deadline }}</span>
+        {% endif %}
+        {% if item.detail %}
+          <div class="item-detail">{{ item.detail }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="panel-empty">No email activity found for this contact.</div>
+  {% endif %}
+</div>
+
+<script>
+document.getElementById('cd-edit-btn').addEventListener('click', () => {
+  document.getElementById('cd-edit-form').style.display = '';
+  document.getElementById('cd-edit-btn').style.display  = 'none';
+  document.getElementById('cd-name').focus();
+});
+document.getElementById('cd-cancel-btn').addEventListener('click', () => {
+  document.getElementById('cd-edit-form').style.display = 'none';
+  document.getElementById('cd-edit-btn').style.display  = '';
+});
+document.getElementById('cd-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('cd-name').value.trim();
+  if (!name) { document.getElementById('cd-msg').textContent = 'Name required'; return; }
+  fetch('/contacts/{{ contact.id }}/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name,
+      organisation: document.getElementById('cd-organisation').value.trim(),
+      role:         document.getElementById('cd-role').value.trim(),
+      email:        document.getElementById('cd-email').value.trim(),
+      notes:        document.getElementById('cd-notes').value.trim(),
+    })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.ok) location.reload(); else document.getElementById('cd-msg').textContent = d.msg; });
+});
+</script>
+
 {% endblock %}

@@ -1,6 +1,177 @@
 {% extends "base.html" %}
 {% block title %}Projects — Oiva{% endblock %}
 {% block content %}
-<h1 style="font-size:22px;font-weight:700;margin-bottom:20px;">Projects</h1>
-<div class="empty">Coming soon — Mikko is building this.</div>
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Projects</h1>
+  <button class="btn btn-primary btn-sm" id="new-project-btn">+ New project</button>
+</div>
+
+<!-- Add project form -->
+<div id="new-project-form" class="dash-digest" style="display:none;margin-bottom:20px;">
+  <h2 style="font-size:15px;font-weight:600;margin-bottom:14px;">New project</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <input id="np-name"        class="capture-input" placeholder="Project name *" style="grid-column:1/-1;">
+    <input id="np-description" class="capture-input" placeholder="Description"    style="grid-column:1/-1;">
+    <input id="np-theme"       class="capture-input" placeholder="Theme">
+    <input id="np-owner"       class="capture-input" placeholder="Owner">
+    <input id="np-deadline"    class="capture-input" type="date">
+    <input id="np-next-action" class="capture-input" placeholder="Next action">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn btn-primary btn-sm"   id="np-save-btn">Save</button>
+    <button class="btn btn-secondary btn-sm" id="np-cancel-btn">Cancel</button>
+    <span id="np-msg" style="font-size:13px;color:var(--muted);"></span>
+  </div>
+</div>
+
+<!-- Status filter -->
+<div style="display:flex;gap:4px;margin-bottom:16px;">
+  <a href="/projects/?status=active"
+     class="btn btn-sm {% if status == 'active' %}btn-primary{% else %}btn-secondary{% endif %}">Active</a>
+  <a href="/projects/?status=closed"
+     class="btn btn-sm {% if status == 'closed' %}btn-primary{% else %}btn-secondary{% endif %}">Closed</a>
+</div>
+
+<!-- Project list -->
+<div id="project-list">
+  {% for p in projects %}
+    <div class="dash-digest" id="project-{{ p.id }}" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-size:15px;font-weight:600;">{{ p.name }}</span>
+            {% if p.theme %}
+              <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--border);color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ p.theme }}</span>
+            {% endif %}
+          </div>
+          {% if p.description %}
+            <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">{{ p.description }}</div>
+          {% endif %}
+          {% if p.next_action %}
+            <div style="font-size:13px;color:var(--accent);font-weight:500;">→ {{ p.next_action }}</div>
+          {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap;flex-shrink:0;">
+          {% if p.deadline %}<span class="item-deadline">{{ p.deadline | fmtdate }}</span>{% endif %}
+          {% if p.owner %}<span style="font-size:12px;color:var(--muted);">{{ p.owner }}</span>{% endif %}
+          <div style="display:flex;gap:4px;margin-top:2px;">
+            <button class="btn btn-ghost btn-sm project-edit-btn"
+                    data-id="{{ p.id }}"
+                    data-name="{{ p.name }}"
+                    data-description="{{ p.description or '' }}"
+                    data-theme="{{ p.theme or '' }}"
+                    data-owner="{{ p.owner or '' }}"
+                    data-deadline="{{ p.deadline or '' }}"
+                    data-next-action="{{ p.next_action or '' }}">Edit</button>
+            {% if p.status == 'active' %}
+              <button class="btn btn-ghost btn-sm project-close-btn" data-id="{{ p.id }}">Close</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Inline edit form -->
+      <div class="project-edit-form" id="edit-form-{{ p.id }}"
+           style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <input class="capture-input ep-name"        placeholder="Project name *" style="grid-column:1/-1;">
+          <input class="capture-input ep-description" placeholder="Description"    style="grid-column:1/-1;">
+          <input class="capture-input ep-theme"       placeholder="Theme">
+          <input class="capture-input ep-owner"       placeholder="Owner">
+          <input class="capture-input ep-deadline"    type="date">
+          <input class="capture-input ep-next-action" placeholder="Next action">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-primary btn-sm ep-save-btn"   data-id="{{ p.id }}">Save</button>
+          <button class="btn btn-secondary btn-sm ep-cancel-btn" data-id="{{ p.id }}">Cancel</button>
+          <span class="ep-msg" style="font-size:13px;color:var(--muted);"></span>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty">No {{ status }} projects.</div>
+  {% endfor %}
+</div>
+
+<script>
+// ── New project ────────────────────────────────────────────────────────────
+document.getElementById('new-project-btn').addEventListener('click', () => {
+  document.getElementById('new-project-form').style.display = '';
+  document.getElementById('np-name').focus();
+});
+document.getElementById('np-cancel-btn').addEventListener('click', () => {
+  document.getElementById('new-project-form').style.display = 'none';
+});
+document.getElementById('np-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('np-name').value.trim();
+  if (!name) { document.getElementById('np-msg').textContent = 'Name required'; return; }
+  fetch('/projects/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name,
+      description: document.getElementById('np-description').value.trim(),
+      theme:       document.getElementById('np-theme').value.trim(),
+      owner:       document.getElementById('np-owner').value.trim(),
+      deadline:    document.getElementById('np-deadline').value || null,
+      next_action: document.getElementById('np-next-action').value.trim(),
+    })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.ok) location.reload(); else document.getElementById('np-msg').textContent = d.msg; });
+});
+
+// ── Edit project ───────────────────────────────────────────────────────────
+document.querySelectorAll('.project-edit-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id   = this.dataset.id;
+    const form = document.getElementById('edit-form-' + id);
+    form.querySelector('.ep-name').value        = this.dataset.name;
+    form.querySelector('.ep-description').value = this.dataset.description;
+    form.querySelector('.ep-theme').value       = this.dataset.theme;
+    form.querySelector('.ep-owner').value       = this.dataset.owner;
+    form.querySelector('.ep-deadline').value    = this.dataset.deadline;
+    form.querySelector('.ep-next-action').value = this.dataset['next-action'];
+    form.style.display = '';
+  });
+});
+document.querySelectorAll('.ep-cancel-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('edit-form-' + this.dataset.id).style.display = 'none';
+  });
+});
+document.querySelectorAll('.ep-save-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id   = this.dataset.id;
+    const form = document.getElementById('edit-form-' + id);
+    const name = form.querySelector('.ep-name').value.trim();
+    if (!name) { form.querySelector('.ep-msg').textContent = 'Name required'; return; }
+    fetch(`/projects/${id}/update`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name,
+        description: form.querySelector('.ep-description').value.trim(),
+        theme:       form.querySelector('.ep-theme').value.trim(),
+        owner:       form.querySelector('.ep-owner').value.trim(),
+        deadline:    form.querySelector('.ep-deadline').value || null,
+        next_action: form.querySelector('.ep-next-action').value.trim(),
+      })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.ok) location.reload(); else form.querySelector('.ep-msg').textContent = d.msg; });
+  });
+});
+
+// ── Close project ──────────────────────────────────────────────────────────
+document.querySelectorAll('.project-close-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm('Close "' + this.closest('.dash-digest').querySelector('span').textContent.trim() + '"?')) return;
+    fetch(`/projects/${this.dataset.id}/close`, {method: 'POST'})
+      .then(() => location.reload());
+  });
+});
+</script>
+
 {% endblock %}
