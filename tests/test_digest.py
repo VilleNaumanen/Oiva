@@ -121,6 +121,23 @@ def test_done_old_actions_not_carried_over(client, db):
     assert b"Completed old action" not in r.data
 
 
+# ── Run Siiri (in-app triage) ──────────────────────────────────────────────────
+
+def test_run_siiri_no_api_key(client):
+    r = client.post("/digest/run-siiri")
+    data = r.get_json()
+    assert data["ok"] is False
+    assert "ANTHROPIC_API_KEY" in data["msg"]
+
+
+def test_run_siiri_empty_inbox(client, app, monkeypatch):
+    monkeypatch.setitem(app.config, "ANTHROPIC_API_KEY", "sk-test-fake")
+    r = client.post("/digest/run-siiri")
+    data = r.get_json()
+    assert data["ok"] is False
+    assert "email" in data["msg"].lower() or "inbox" in data["msg"].lower()
+
+
 # ── Feed Siiri ─────────────────────────────────────────────────────────────────
 
 def test_feed_siiri_no_digest(client):
