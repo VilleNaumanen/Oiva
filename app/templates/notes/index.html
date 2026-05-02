@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Notes — Oiva{% endblock %}
+{% block content %}
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Notes</h1>
+  <button class="btn btn-primary btn-sm" id="new-note-btn">+ New note</button>
+</div>
+
+<!-- New note form -->
+<div id="new-note-form" class="dash-digest" style="display:none;margin-bottom:20px;">
+  <h2 style="font-size:15px;font-weight:600;margin-bottom:14px;">New note</h2>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">
+    <input id="nn-title"   class="capture-input" placeholder="Title (optional)">
+    <textarea id="nn-content" class="capture-input" placeholder="Content *" rows="4"
+              style="resize:vertical;"></textarea>
+    <input id="nn-tags" class="capture-input" placeholder="Tags (comma-separated)">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn btn-primary btn-sm"   id="nn-save-btn">Save</button>
+    <button class="btn btn-secondary btn-sm" id="nn-cancel-btn">Cancel</button>
+    <span id="nn-msg" style="font-size:13px;color:var(--muted);"></span>
+  </div>
+</div>
+
+<!-- Tag filter -->
+{% if all_tags %}
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;">
+  <span style="font-size:12px;color:var(--muted);">Filter:</span>
+  <a href="/notes/" class="btn btn-sm {% if not tag_filter %}btn-primary{% else %}btn-secondary{% endif %}">All</a>
+  {% for t in all_tags %}
+    <a href="/notes/?tag={{ t }}"
+       class="btn btn-sm {% if tag_filter == t %}btn-primary{% else %}btn-secondary{% endif %}">{{ t }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Notes list -->
+{% for note in notes %}
+  <div class="dash-digest" id="note-{{ note.id }}" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        {% if note.title %}
+          <div style="font-size:15px;font-weight:600;margin-bottom:4px;">{{ note.title }}</div>
+        {% endif %}
+        <div style="font-size:13px;color:var(--text);white-space:pre-wrap;">{{ note.content }}</div>
+
+        {% if note.tag_names %}
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">
+            {% for tag in note.tag_names.split(',') %}
+              <a href="/notes/?tag={{ tag }}"
+                 style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--border);color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ tag }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% set note_attachments = attachments.get(note.id, []) %}
+        {% if note_attachments %}
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+            {% for a in note_attachments %}
+              <span style="font-size:12px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+                {{ a.filename }}
+                <button class="delete-attach-btn" data-note="{{ note.id }}" data-attach="{{ a.id }}"
+                        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0;">✕</button>
+              </span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">{{ note.created_at[:10] }}</div>
+      </div>
+
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <label class="btn btn-ghost btn-sm" title="Attach file" style="cursor:pointer;">
+          + File
+          <input type="file" class="note-file-input" data-id="{{ note.id }}" style="display:none;">
+        </label>
+        <button class="btn btn-ghost btn-sm note-edit-btn"
+                data-id="{{ note.id }}"
+                data-title="{{ note.title or '' }}"
+                data-content="{{ note.content }}"
+                data-tags="{{ note.tag_names or '' }}">Edit</button>
+        <button class="btn btn-ghost btn-sm note-delete-btn" data-id="{{ note.id }}">Delete</button>
+      </div>
+    </div>
+
+    <!-- Inline edit form -->
+    <div class="note-edit-form" id="edit-note-{{ note.id }}"
+         style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">
+        <input class="capture-input en-title"   placeholder="Title (optional)">
+        <textarea class="capture-input en-content" placeholder="Content *" rows="4"
+                  style="resize:vertical;"></textarea>
+        <input class="capture-input en-tags" placeholder="Tags (comma-separated)">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-primary btn-sm en-save-btn"   data-id="{{ note.id }}">Save</button>
+        <button class="btn btn-secondary btn-sm en-cancel-btn" data-id="{{ note.id }}">Cancel</button>
+        <span class="en-msg" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="empty">
+    {% if tag_filter %}No notes tagged "{{ tag_filter }}".{% else %}No notes yet.{% endif %}
+  </div>
+{% endfor %}
+
+<script>
+// ── New note ───────────────────────────────────────────────────────────────
+document.getElementById('new-note-btn').addEventListener('click', () => {
+  document.getElementById('new-note-form').style.display = '';
+  document.getElementById('nn-content').focus();
+});
+document.getElementById('nn-cancel-btn').addEventListener('click', () => {
+  document.getElementById('new-note-form').style.display = 'none';
+});
+document.getElementById('nn-save-btn').addEventListener('click', () => {
+  const content = document.getElementById('nn-content').value.trim();
+  if (!content) { document.getElementById('nn-msg').textContent = 'Content required'; return; }
+  fetch('/notes/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      title:   document.getElementById('nn-title').value.trim() || null,
+      content,
+      tags: document.getElementById('nn-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.ok) location.reload(); else document.getElementById('nn-msg').textContent = d.msg; });
+});
+
+// ── Edit note ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.note-edit-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id   = this.dataset.id;
+    const form = document.getElementById('edit-note-' + id);
+    form.querySelector('.en-title').value   = this.dataset.title;
+    form.querySelector('.en-content').value = this.dataset.content;
+    form.querySelector('.en-tags').value    = this.dataset.tags;
+    form.style.display = '';
+  });
+});
+document.querySelectorAll('.en-cancel-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('edit-note-' + this.dataset.id).style.display = 'none';
+  });
+});
+document.querySelectorAll('.en-save-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id      = this.dataset.id;
+    const form    = document.getElementById('edit-note-' + id);
+    const content = form.querySelector('.en-content').value.trim();
+    if (!content) { form.querySelector('.en-msg').textContent = 'Content required'; return; }
+    fetch(`/notes/${id}/update`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title:   form.querySelector('.en-title').value.trim() || null,
+        content,
+        tags: form.querySelector('.en-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+      })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.ok) location.reload(); else form.querySelector('.en-msg').textContent = d.msg; });
+  });
+});
+
+// ── Delete note ────────────────────────────────────────────────────────────
+document.querySelectorAll('.note-delete-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm('Delete this note?')) return;
+    fetch(`/notes/${this.dataset.id}/delete`, {method: 'POST'})
+      .then(() => document.getElementById('note-' + this.dataset.id).remove());
+  });
+});
+
+// ── File attach ────────────────────────────────────────────────────────────
+document.querySelectorAll('.note-file-input').forEach(inp => {
+  inp.addEventListener('change', function() {
+    if (!this.files[0]) return;
+    const id   = this.dataset.id;
+    const form = new FormData();
+    form.append('file', this.files[0]);
+    fetch(`/notes/${id}/attach`, {method: 'POST', body: form})
+      .then(r => r.json())
+      .then(d => { if (d.ok) location.reload(); else alert(d.msg); });
+  });
+});
+
+// ── Delete attachment ──────────────────────────────────────────────────────
+document.querySelectorAll('.delete-attach-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const nid = this.dataset.note;
+    const aid = this.dataset.attach;
+    fetch(`/notes/${nid}/attach/${aid}/delete`, {method: 'POST'})
+      .then(() => this.closest('span').remove());
+  });
+});
+</script>
+
+{% endblock %}

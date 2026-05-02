@@ -37,6 +37,46 @@ Return ONLY valid JSON, no other text:
 Extract meetings ONLY from calendar invites Ville has accepted."""
 
 
+def _workspace_context(db, today_str: str) -> str | None:
+    """Build a workspace snapshot for Siiri from current DB state."""
+    parts = []
+
+    notes = db.execute(
+        "SELECT title, content FROM notes ORDER BY created_at DESC LIMIT 10"
+    ).fetchall()
+    if notes:
+        parts.append("VILLE'S NOTES:\n" + "\n".join(
+            f"- {(r['title'] + ': ') if r['title'] else ''}{r['content'][:300]}"
+            for r in notes
+        ))
+
+    meetings = db.execute(
+        "SELECT title, date, time_start, location FROM meetings "
+        "WHERE date >= ? AND done=0 ORDER BY date ASC LIMIT 10",
+        [today_str]
+    ).fetchall()
+    if meetings:
+        parts.append("UPCOMING MEETINGS:\n" + "\n".join(
+            f"- {m['date']}{(' ' + m['time_start']) if m['time_start'] else ''}: {m['title']}"
+            + (f" @ {m['location']}" if m['location'] else "")
+            for m in meetings
+        ))
+
+    projects = db.execute(
+        "SELECT name, deadline, next_action FROM projects "
+        "WHERE status='active' ORDER BY deadline ASC LIMIT 10"
+    ).fetchall()
+    if projects:
+        parts.append("ACTIVE PROJECTS:\n" + "\n".join(
+            f"- {p['name']}"
+            + (f" (due {p['deadline']})" if p['deadline'] else "")
+            + (f" → {p['next_action']}" if p['next_action'] else "")
+            for p in projects
+        ))
+
+    return "\n\n".join(parts) if parts else None
+
+
 def run_digest(config: dict) -> tuple[bool, str | int]:
     api_key = config.get("ANTHROPIC_API_KEY", "")
     if not api_key:
@@ -73,6 +113,10 @@ def run_digest(config: dict) -> tuple[bool, str | int]:
         prefs_text = open(siiri_prefs, encoding="utf-8", errors="ignore").read().strip()
         if prefs_text:
             system_blocks.append({"type": "text", "text": f"VILLE'S CURRENT INSTRUCTIONS:\n{prefs_text}"})
+
+    ctx = _workspace_context(db, date.today().isoformat())
+    if ctx:
+        system_blocks.append({"type": "text", "text": f"VILLE'S CURRENT WORKSPACE:\n\n{ctx}", "cache_control": {"type": "ephemeral"}})
 
     replied_keys = [r["thread_key"] for r in db.execute(
         "SELECT DISTINCT thread_key FROM emails WHERE direction='sent' AND thread_key IS NOT NULL AND thread_key != ''"
