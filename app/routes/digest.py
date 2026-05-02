@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from ..database import get_db
 from ..services.digest import persist_digest
 from ..services.email_parser import archive_inbox_emails
+from ..services.reply import mark_action_replied
 
 bp = Blueprint("digest", __name__)
 
@@ -55,10 +56,10 @@ def save_note(action_id):
 
 
 @bp.route("/action/<int:action_id>/reply", methods=["POST"])
-def mark_replied(action_id):
-    db = get_db()
-    db.execute("UPDATE digest_actions SET replied=1 WHERE id=?", [action_id])
-    db.commit()
+def mark_replied(action_id: int):
+    found = mark_action_replied(get_db(), action_id)
+    if not found:
+        return jsonify({"ok": False, "msg": "action not found"}), 404
     return jsonify({"ok": True})
 
 

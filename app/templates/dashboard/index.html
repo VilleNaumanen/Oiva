@@ -83,6 +83,12 @@
                 {% if item.email_from %}
                   <div class="item-meta">{{ item.email_from }}{% if item.email_subject %} — {{ item.email_subject }}{% endif %}</div>
                 {% endif %}
+                <div class="item-reply-row" id="reply-row-{{ item.id }}">
+                  {% if not item.replied %}
+                    <button class="btn btn-ghost btn-sm reply-btn" data-id="{{ item.id }}"
+                            style="padding:2px 7px;font-size:11px;margin-top:4px;">Mark replied</button>
+                  {% endif %}
+                </div>
                 <textarea class="item-note" data-id="{{ item.id }}"
                           placeholder="Add note or Siiri instruction…" rows="1">{{ item.note or '' }}</textarea>
               </div>
@@ -227,6 +233,21 @@ document.querySelectorAll('.action-check').forEach(cb => {
     fetch(`/digest/action/${id}/toggle`, {method: 'POST'})
       .then(r => r.json())
       .then(() => item.classList.toggle('done', this.checked));
+  });
+});
+
+// ── Mark replied ───────────────────────────────────────────────────────────
+document.querySelectorAll('.reply-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id = this.dataset.id;
+    fetch(`/digest/action/${id}/reply`, {method: 'POST'})
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          document.getElementById('reply-row-' + id).innerHTML =
+            '<span class="replied-badge" style="margin-top:4px;display:inline-block;">✓ replied</span>';
+        }
+      });
   });
 });
 

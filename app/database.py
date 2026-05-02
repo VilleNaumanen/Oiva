@@ -208,3 +208,10 @@ def _create_schema(db: sqlite3.Connection) -> None:
     """)
 
     db.commit()
+
+    # Migrations — safe to run every startup (ALTER TABLE is a no-op if column exists)
+    try:
+        db.execute("ALTER TABLE digest_actions ADD COLUMN replied_at DATETIME")
+        db.commit()
+    except Exception:
+        pass
