@@ -1,6 +1,92 @@
 {% extends "base.html" %}
 {% block title %}Contacts — Oiva{% endblock %}
 {% block content %}
-<h1 style="font-size:22px;font-weight:700;margin-bottom:20px;">Contacts</h1>
-<div class="empty">Coming soon — Mikko is building this.</div>
+
+<div class="dash-section-header" style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:700;">Contacts</h1>
+  <button class="btn btn-primary btn-sm" id="new-contact-btn">+ New contact</button>
+</div>
+
+<!-- Add contact form -->
+<div id="new-contact-form" class="dash-digest" style="display:none;margin-bottom:20px;">
+  <h2 style="font-size:15px;font-weight:600;margin-bottom:14px;">New contact</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <input id="nc-name"         class="capture-input" placeholder="Full name *"   style="grid-column:1/-1;">
+    <input id="nc-organisation" class="capture-input" placeholder="Organisation">
+    <input id="nc-role"         class="capture-input" placeholder="Role / title">
+    <input id="nc-email"        class="capture-input" type="email" placeholder="Email" style="grid-column:1/-1;">
+    <textarea id="nc-notes"     class="capture-input" placeholder="Notes" rows="2"
+              style="grid-column:1/-1;resize:vertical;"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn btn-primary btn-sm"   id="nc-save-btn">Save</button>
+    <button class="btn btn-secondary btn-sm" id="nc-cancel-btn">Cancel</button>
+    <span id="nc-msg" style="font-size:13px;color:var(--muted);"></span>
+  </div>
+</div>
+
+<!-- Search -->
+<form method="get" action="/contacts/" style="display:flex;gap:8px;margin-bottom:16px;">
+  <input name="q" class="capture-input" placeholder="Search by name, organisation, or email…"
+         value="{{ q or '' }}" style="flex:1;max-width:400px;">
+  <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+  {% if q %}<a href="/contacts/" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+
+<!-- Contact list -->
+<div class="dash-digest" style="padding:0;overflow:hidden;">
+  {% for c in contacts %}
+    <a href="/contacts/{{ c.id }}"
+       style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .15s;"
+       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">
+        {{ c.name[0] | upper }}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">{{ c.name }}</div>
+        {% if c.role or c.organisation %}
+          <div style="font-size:12px;color:var(--muted);">
+            {{ c.role }}{% if c.role and c.organisation %} · {% endif %}{{ c.organisation }}
+          </div>
+        {% endif %}
+      </div>
+      {% if c.email %}
+        <div style="font-size:12px;color:var(--muted);flex-shrink:0;">{{ c.email }}</div>
+      {% endif %}
+      <span style="color:var(--muted);font-size:16px;">›</span>
+    </a>
+  {% else %}
+    <div class="empty" style="padding:40px 24px;">
+      {% if q %}No contacts matching "{{ q }}".{% else %}No contacts yet — add one above.{% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+document.getElementById('new-contact-btn').addEventListener('click', () => {
+  document.getElementById('new-contact-form').style.display = '';
+  document.getElementById('nc-name').focus();
+});
+document.getElementById('nc-cancel-btn').addEventListener('click', () => {
+  document.getElementById('new-contact-form').style.display = 'none';
+});
+document.getElementById('nc-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('nc-name').value.trim();
+  if (!name) { document.getElementById('nc-msg').textContent = 'Name required'; return; }
+  fetch('/contacts/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name,
+      organisation: document.getElementById('nc-organisation').value.trim(),
+      role:         document.getElementById('nc-role').value.trim(),
+      email:        document.getElementById('nc-email').value.trim(),
+      notes:        document.getElementById('nc-notes').value.trim(),
+    })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.ok) window.location = '/contacts/' + d.id; else document.getElementById('nc-msg').textContent = d.msg; });
+});
+</script>
+
 {% endblock %}
