@@ -12,6 +12,9 @@ instance/
 uploads/
 flask.log
 
+# Local startup script (contains API key — never commit)
+start_oiva.bat
+
 # Database (data lives outside repo)
 *.db
 *.sqlite

@@ -18,7 +18,30 @@ def create_app(config_name: str = "default", test_config: dict | None = None) ->
     _register_filters(app)
     _register_blueprints(app)
 
+    # Start background scheduler only in the live server process (not during tests
+    # or in the Werkzeug reloader parent process, which would start it twice).
+    if not app.testing:
+        if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+            _start_scheduler(app)
+
     return app
+
+
+def _start_scheduler(app: Flask) -> None:
+    from apscheduler.schedulers.background import BackgroundScheduler
+
+    hour = app.config.get("SIIRI_DAILY_HOUR", 7)
+
+    def _daily_siiri() -> None:
+        with app.app_context():
+            from .services.siiri import run_digest
+            ok, result = run_digest(app.config)
+            status = f"digest_id={result}" if ok else f"failed: {result}"
+            app.logger.info(f"Daily Siiri: {status}")
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(_daily_siiri, "cron", hour=hour, minute=0)
+    scheduler.start()
 
 
 def _register_filters(app: Flask) -> None:
