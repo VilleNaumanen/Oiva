@@ -116,6 +116,36 @@ def test_import_calendar_skips_duplicate(client, app, db, tmp_path):
     assert count == 1
 
 
+def test_import_lut_calendar_infers_source_from_filename(client, app, db, tmp_path):
+    import json
+    cal_dir = tmp_path / "cal_lut"
+    cal_dir.mkdir()
+    app.config["CALENDAR"] = str(cal_dir)
+    # LUT flow writes files with [LUT][Calendar] prefix but no source field in JSON
+    (cal_dir / "[LUT][Calendar]2099-09-01_board.json").write_text(json.dumps({
+        "title": "LUT Board Meeting", "date": "2099-09-01",
+        "time_start": "09:00", "time_end": "10:00",
+    }))
+    r = client.post("/meetings/import-calendar")
+    assert r.get_json()["imported"] == 1
+    row = db.execute("SELECT source FROM meetings WHERE title='LUT Board Meeting'").fetchone()
+    assert row["source"] == "lut"
+
+
+def test_import_lut_calendar_source_field_takes_precedence(client, app, db, tmp_path):
+    import json
+    cal_dir = tmp_path / "cal_lut2"
+    cal_dir.mkdir()
+    app.config["CALENDAR"] = str(cal_dir)
+    # Explicit source in JSON always wins over filename inference
+    (cal_dir / "[LUT][Calendar]2099-09-02_override.json").write_text(json.dumps({
+        "title": "Override Meeting", "date": "2099-09-02", "source": "kempower",
+    }))
+    client.post("/meetings/import-calendar")
+    row = db.execute("SELECT source FROM meetings WHERE title='Override Meeting'").fetchone()
+    assert row["source"] == "kempower"
+
+
 # ── Snooze urgent (projects) ───────────────────────────────────────────────────
 
 def test_snooze_urgent_noop(client, db):

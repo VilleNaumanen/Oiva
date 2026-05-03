@@ -3,6 +3,13 @@ import os
 from datetime import date
 
 
+def _infer_source(filename: str) -> str:
+    """Infer calendar source from filename prefix when JSON doesn't set it."""
+    if "[LUT]" in filename:
+        return "lut"
+    return "calendar"
+
+
 def import_calendar_files(db, config: dict) -> int:
     cal_dir = config.get("CALENDAR", "")
     if not cal_dir or not os.path.isdir(cal_dir):
@@ -37,7 +44,7 @@ def import_calendar_files(db, config: dict) -> int:
                 [title, evt_date,
                  data.get("time_start"), data.get("time_end"),
                  data.get("location"), data.get("organizer"),
-                 data.get("source", "calendar")]
+                 data.get("source") or _infer_source(fname)]
             )
             db.commit()
             imported += 1
