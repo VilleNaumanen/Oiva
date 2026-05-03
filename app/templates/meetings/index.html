@@ -4,7 +4,11 @@
 
 <div class="dash-section-header" style="margin-bottom:20px;">
   <h1 style="font-size:22px;font-weight:700;">Meetings</h1>
-  <button class="btn btn-primary btn-sm" id="new-meeting-btn">+ Add meeting</button>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="btn btn-secondary btn-sm" id="import-calendar-btn">↓ Import calendar</button>
+    <span id="import-msg" style="font-size:12px;color:var(--muted);"></span>
+    <button class="btn btn-primary btn-sm" id="new-meeting-btn">+ Add meeting</button>
+  </div>
 </div>
 
 <!-- Add meeting form -->
@@ -72,6 +76,26 @@
 {% endif %}
 
 <script>
+// ── Import calendar ────────────────────────────────────────────────────────
+document.getElementById('import-calendar-btn').addEventListener('click', function() {
+  const btn = this;
+  const msg = document.getElementById('import-msg');
+  btn.disabled = true;
+  btn.textContent = '⏳ Importing…';
+  fetch('/meetings/import-calendar', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        msg.textContent = d.imported > 0 ? `✓ ${d.imported} imported` : '✓ Nothing new';
+        if (d.imported > 0) setTimeout(() => location.reload(), 800);
+      } else {
+        msg.textContent = `✗ ${d.msg}`;
+      }
+      btn.textContent = '↓ Import calendar';
+      btn.disabled = false;
+    });
+});
+
 // ── New meeting ────────────────────────────────────────────────────────────
 document.getElementById('new-meeting-btn').addEventListener('click', () => {
   document.getElementById('new-meeting-form').style.display = '';
